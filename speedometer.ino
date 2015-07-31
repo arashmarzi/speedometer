@@ -3,14 +3,14 @@
 #include "I2Cdev.h"
 
 MPU6050 accelgyro;
+unsigned long last_read_time;
+int ax, ay, az, gx, gy, gz;
 
-int16_t ax, ay, az, gx, gy, gz;
-int ax_p, ay_p, az_p;
 float const_2g = 16384;
 float const_16g = 2048;
 float const_250 = 131;
 float const_2000 = 16.4;
-int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
+int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
 void setup() {
   Wire.begin();
@@ -26,7 +26,7 @@ void setup() {
   accelgyro.setFullScaleAccelRange(0x03);
   accelgyro.setFullScaleGyroRange(0x03);
 
-  Serial.print("getFullScaleAccelRange() ");
+  /*Serial.print("getFullScaleAccelRange() ");
   Serial.println(accelgyro.getFullScaleAccelRange());
   Serial.print("getFullScaleGyroRange() ");
   Serial.println(accelgyro.getFullScaleGyroRange());
@@ -42,31 +42,48 @@ void setup() {
   Serial.println(accelgyro.getYGyroOffset());
   Serial.print("Gyro Offset Z ");
   Serial.println(accelgyro.getZGyroOffset());
-
+  */
   calibrate_sensors();
+  set_last_time(millis());
 }
 
 void loop() {
- accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  unsigned long t_now = millis();
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-  Serial.print("accel: ");
-  Serial.print((ax - ax_offset)/const_16g);
-  Serial.print(",");
-  Serial.print((ay - ay_offset)/const_16g);
-  Serial.print(",");
-  Serial.print(az/const_16g);
-  Serial.print("  gyro: ");
-  Serial.print((gx-gx_offset)/const_2000);
-  Serial.print(",");
-  Serial.print((gy-gy_offset)/const_2000);
-  Serial.print(",");
-  Serial.println((gz-gz_offset)/const_2000);
+  float ax_p = (ax - ax_offset) / const_16g;
+  float ay_p = (ay - ay_offset) / const_16g;
+  float az_p = az / const_16g;
 
+  float gx_p = (gx - gx_offset) / const_2000;
+  float gy_p = (gy - gy_offset) / const_2000;
+  float gz_p = (gz - gz_offset) / const_2000;
+
+  float dt = get_delta_time(t_now);
+
+  Serial.print(dt, DEC);
+  Serial.print(",");
+  Serial.print(t_now);
+  Serial.print("   accel: ");
+  Serial.print(ax_p, 4);
+  Serial.print(",");
+  Serial.print(ay_p, 4);
+  Serial.print(",");
+  Serial.print(az_p, 4);
+  Serial.print("   gyro: ");
+  Serial.print(gx_p);
+  Serial.print(",");
+  Serial.print(gy_p);
+  Serial.print(",");
+  Serial.println(gz_p);
+  Serial.println();
+
+  set_last_time(t_now);
   delay(100);
 }
 
 void calibrate_sensors() {
-  int                   num_readings = 1000;
+  int                   num_readings = 100;
   float                 x_accel = 0;
   float                 y_accel = 0;
   float                 z_accel = 0;
@@ -84,17 +101,17 @@ void calibrate_sensors() {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     Serial.print(i);
     Serial.print("-CALIBRATION: ");
-    Serial.print(ax/const_16g);
+    Serial.print(ax / const_16g);
     Serial.print(",");
-    Serial.print(ay/const_16g);
+    Serial.print(ay / const_16g);
     Serial.print(",");
-    Serial.print(az/const_16g);
+    Serial.print(az / const_16g);
     Serial.print(",");
-    Serial.print(gx/const_2000);
+    Serial.print(gx / const_2000);
     Serial.print(",");
-    Serial.print(gy/const_2000);
+    Serial.print(gy / const_2000);
     Serial.print(",");
-    Serial.println(gz/const_2000);
+    Serial.println(gz / const_2000);
     x_accel += ax;
     y_accel += ay;
     z_accel += az;
@@ -119,17 +136,30 @@ void calibrate_sensors() {
   gz_offset = z_gyro;
 
   Serial.print("Offsets: ");
-  Serial.print((int16_t)ax_offset);
+  Serial.print(ax_offset);
   Serial.print(", ");
-  Serial.print((int16_t)ay_offset);
+  Serial.print(ay_offset);
   Serial.print(", ");
-  Serial.print((int16_t)az_offset);
+  Serial.print(az_offset);
   Serial.print(", ");
-  Serial.print((int16_t)gx_offset);
+  Serial.print(gx_offset);
   Serial.print(", ");
-  Serial.print((int16_t)gy_offset);
+  Serial.print(gy_offset);
   Serial.print(", ");
-  Serial.println((int16_t)gz_offset);
+  Serial.println(gz_offset);
 
   Serial.println("Finishing Calibration");
 }
+
+inline unsigned long get_last_time() {
+  return last_read_time;
+}
+
+inline void set_last_time(unsigned long _time) {
+  last_read_time = _time;
+}
+
+inline float get_delta_time(unsigned long t_now){
+  return (t_now - get_last_time()) / 1000.0;
+}
+
