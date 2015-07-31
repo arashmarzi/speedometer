@@ -5,7 +5,7 @@
 MPU6050 accelgyro;
 unsigned long last_read_time;
 int ax, ay, az, gx, gy, gz;
-
+float last_velocity;
 float const_2g = 16384;
 float const_16g = 2048;
 float const_250 = 131;
@@ -45,6 +45,7 @@ void setup() {
   */
   calibrate_sensors();
   set_last_time(millis());
+  set_last_velocity(0);
 }
 
 void loop() {
@@ -60,11 +61,13 @@ void loop() {
   float gz_p = (gz - gz_offset) / const_2000;
 
   float dt = get_delta_time(t_now);
+  float accel_xy = get_accel_xy(ax_p, ay_p);
+  float velocity = get_velocity(accel_xy, dt);
 
-  Serial.print(dt, DEC);
-  Serial.print(",");
-  Serial.print(t_now);
-  Serial.print("   accel: ");
+  /* Serial.print(dt, DEC);
+   Serial.print(",");
+   Serial.print(t_now);
+   */Serial.print("accel: ");
   Serial.print(ax_p, 4);
   Serial.print(",");
   Serial.print(ay_p, 4);
@@ -76,9 +79,14 @@ void loop() {
   Serial.print(gy_p);
   Serial.print(",");
   Serial.println(gz_p);
+  Serial.print("   velocity: ");
+  Serial.print(velocity);
+  Serial.print("   accel_xy: ");
+  Serial.println(accel_xy);
   Serial.println();
 
   set_last_time(t_now);
+  set_last_velocity(velocity);
   delay(100);
 }
 
@@ -159,7 +167,23 @@ inline void set_last_time(unsigned long _time) {
   last_read_time = _time;
 }
 
-inline float get_delta_time(unsigned long t_now){
+inline float get_delta_time(unsigned long t_now) {
   return (t_now - get_last_time()) / 1000.0;
+}
+
+inline float get_last_velocity() {
+  return last_velocity;
+}
+
+inline void set_last_velocity(float _velocity) {
+  last_velocity = _velocity;
+}
+
+inline float get_velocity(int16_t accel_xy, float delta_time) {
+  return  get_last_velocity() + (accel_xy * delta_time);
+}
+
+inline float get_accel_xy(int ax, int ay) {
+  return sqrt(pow(ax, 2) + pow(ay, 2));
 }
 
