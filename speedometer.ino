@@ -4,13 +4,16 @@
 
 MPU6050 accelgyro;
 unsigned long last_read_time;
-int ax, ay, az, gx, gy, gz;
+int16_t ax, ay, az, gx, gy, gz;
+float last_velocity_x;
+float last_velocity_y;
 float last_velocity;
 float const_2g = 16384;
 float const_16g = 2048;
 float const_250 = 131;
 float const_2000 = 16.4;
-int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
+float const_g = 9.81;
+int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
 void setup() {
   Wire.begin();
@@ -52,46 +55,66 @@ void loop() {
   unsigned long t_now = millis();
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-  float ax_p = (ax - ax_offset) / const_16g;
-  float ay_p = (ay - ay_offset) / const_16g;
-  float az_p = az / const_16g;
+  float ax_p = ((ax - ax_offset) / const_16g) * const_g;
+  float ay_p = ((ay - ay_offset) / const_16g) * const_g;
+  float az_p = (az / const_16g) * const_g;
 
   float gx_p = (gx - gx_offset) / const_2000;
   float gy_p = (gy - gy_offset) / const_2000;
   float gz_p = (gz - gz_offset) / const_2000;
 
   float dt = get_delta_time(t_now);
-  float accel_xy = get_accel_xy(ax_p, ay_p);
-  float velocity = get_velocity(accel_xy, dt);
-
-  /* Serial.print(dt, DEC);
-   Serial.print(",");
-   Serial.print(t_now);
-   */Serial.print("accel: ");
-  Serial.print(ax_p, 4);
+  //float accel_xy = get_accel_xy(ax_p, ay_p);
+  float new_velocity_x = ((ax_p * dt));
+  float new_velocity_y = ((ay_p * dt));
+  float new_velocity = sqrt(pow(new_velocity_x,2) + pow(new_velocity_y,2)); 
+  
+  //get_velocity(accel_xy, dt);
+  
+  /*Serial.print(dt, DEC);
+  Serial.print("   accel: ");
+  Serial.print(ax_p);
   Serial.print(",");
-  Serial.print(ay_p, 4);
+  Serial.print(ay_p);
   Serial.print(",");
-  Serial.print(az_p, 4);
-  Serial.print("   gyro: ");
+  Serial.print(az_p);*/
+  /*Serial.print("   gyro: ");
   Serial.print(gx_p);
   Serial.print(",");
   Serial.print(gy_p);
   Serial.print(",");
-  Serial.println(gz_p);
-  Serial.print("   velocity: ");
-  Serial.print(velocity);
-  Serial.print("   accel_xy: ");
-  Serial.println(accel_xy);
-  Serial.println();
-
+  Serial.println(gz_p);*/
+  Serial.print("v_x: ");
+  Serial.print(new_velocity_x, 4);
+  Serial.print("  ov_x: ");
+  Serial.print(last_velocity_x, 4);
+  Serial.print("  ax_p*dt: ");
+  Serial.print((ax_p * dt), 4);
+  Serial.print("  V: ");
+  Serial.print(new_velocity, 4);
+  Serial.print("  v_y: ");
+  Serial.print(new_velocity_y, 4);
+  Serial.print("  ov_y: ");
+  Serial.print(last_velocity_y, 4);
+  Serial.print("  ay_p*dt: ");
+  Serial.println((ay_p * dt), 4);
+  /*Serial.print("   accel_xy: ");
+  Serial.print(sqrt(pow(ax_p, 2) + pow(ay_p, 2)), 4);
+  Serial.print("   dt * accel_xy: ");
+  Serial.print(dt*sqrt(pow(ax_p, 2) + pow(ay_p, 2)), 4);
+  Serial.print("  velocity: " );
+  Serial.println(last_velocity + (dt*sqrt(pow(ax_p, 2) + pow(ay_p, 2))), 4);
+*/
   set_last_time(t_now);
-  set_last_velocity(velocity);
+  set_last_velocity(new_velocity);
+  last_velocity_x = new_velocity_x;
+  last_velocity_y = new_velocity_y;
+  
   delay(100);
 }
 
 void calibrate_sensors() {
-  int                   num_readings = 100;
+  int                   num_readings = 50;
   float                 x_accel = 0;
   float                 y_accel = 0;
   float                 z_accel = 0;
@@ -109,11 +132,11 @@ void calibrate_sensors() {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     Serial.print(i);
     Serial.print("-CALIBRATION: ");
-    Serial.print(ax / const_16g);
+    Serial.print((ax / const_16g)*const_g);
     Serial.print(",");
-    Serial.print(ay / const_16g);
+    Serial.print((ay / const_16g)*const_g);
     Serial.print(",");
-    Serial.print(az / const_16g);
+    Serial.print((az / const_16g)*const_g);
     Serial.print(",");
     Serial.print(gx / const_2000);
     Serial.print(",");
@@ -179,11 +202,11 @@ inline void set_last_velocity(float _velocity) {
   last_velocity = _velocity;
 }
 
-inline float get_velocity(int16_t accel_xy, float delta_time) {
-  return  get_last_velocity() + (accel_xy * delta_time);
+inline float get_velocity(float accel_xy, float delta_time) {
+  return  get_last_velocity() + (accel_xy * 9.81 * delta_time);
 }
 
-inline float get_accel_xy(int ax, int ay) {
-  return sqrt(pow(ax, 2) + pow(ay, 2));
+inline float get_accel_xy(float ax_p, float ay_p) {
+  return sqrt(pow(ax_p, 2) + pow(ay_p, 2));
 }
 
