@@ -2,13 +2,16 @@
 #include "Wire.h"
 #include "I2Cdev.h"
 
-const float const_16g = 2048;
-const float const_2000 = 16.4;
-const float const_g = 9.81;
-
+const float CONST_16G = 2048;
+const float CONST_2000 = 16.4;
+const float CONST_G = 9.81;
+const float RADIANS_TO_DEGREES = 180 / 3.14159;
+const float ALPHA = 0.96;
 MPU6050 accelgyro;
 unsigned long last_read_time;
 int16_t ax, ay, az, gx, gy, gz;
+int16_t gyro_angle_x_l, gyro_angle_y_l;
+int16_t angle_x_l, angle_y_l;
 int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 int16_t temperature;
 void setup() {
@@ -31,22 +34,31 @@ void setup() {
 
 void loop() {
   unsigned long t_now = millis();
+  float dt = get_delta_time(t_now);
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-  float ax_p = (ax - ax_offset) / const_16g;
-  float ay_p = (ay - ay_offset) / const_16g;
-  float az_p = (az / const_16g);
+  float ax_p = (ax - ax_offset) / CONST_16G;
+  float ay_p = (ay - ay_offset) / CONST_16G;
+  float az_p = (az / CONST_16G);
 
-  float gx_p = (gx - gx_offset) / const_2000;
-  float gy_p = (gy - gy_offset) / const_2000;
-  float gz_p = (gz - gz_offset) / const_2000;
+  float accel_angle_y = atan(-1 * ax_p / sqrt(pow(ay_p, 2) + pow(az_p, 2))) * RADIANS_TO_DEGREES;
+  float accel_angle_x = atan(ay_p / sqrt(pow(ax_p, 2) + pow(az_p, 2))) * RADIANS_TO_DEGREES;
 
-  float dt = get_delta_time(t_now);
-  float vel_x = (ax_p * dt * const_g);
-  float vel_y = (ay_p * dt * const_g);
+  float gx_p = (gx - gx_offset) / CONST_2000;
+  float gy_p = (gy - gy_offset) / CONST_2000;
+  float gz_p = (gz - gz_offset) / CONST_2000;
+
+  float gyro_angle_x = gx_p * dt + get_last_angle_x();
+  float gyro_angle_y = gy_p * dt + get_last_angle_y();
+
+  float angle_x = ALPHA * gyro_angle_x + (1.0 - ALPHA) * accel_angle_x;
+  float angle_y = ALPHA * gyro_angle_y + (1.0 - ALPHA) * accel_angle_y;
+
+  float vel_x = (ax_p * dt * CONST_G);
+  float vel_y = (ay_p * dt * CONST_G);
   float vel = sqrt(pow(vel_x, 2) + pow(vel_y, 2));
 
-  temperature = (accelgyro.getTemperature() + 12412)/340;
+  temperature = (accelgyro.getTemperature() + 12412) / 340;
 
   //Serial.print(dt, DEC);
   /*Serial.print("accel: ");
@@ -67,10 +79,22 @@ void loop() {
   Serial.print(vel_x, 4);
   Serial.print(",");
   Serial.println(vel_y, 4);
-*/
-Serial.print("Temp: ");
-Serial.println(temperature);
+  */
+  Serial.print("angle_x: ");
+  Serial.print(angle_x);
+  Serial.print("   angle_y: ");
+  Serial.print(angle_y);
+
+  Serial.print("   temp: ");
+  Serial.println(temperature);
   set_last_time(t_now);
+
+  set_last_gyro_angle_x(gyro_angle_x);
+  set_last_gyro_angle_y(gyro_angle_y);
+
+  set_last_angle_x(angle_x);
+  set_last_angle_y(angle_y);
+
   delay(5);
 }
 
@@ -93,17 +117,17 @@ void calibrate_sensors() {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     Serial.print(i);
     Serial.print("-CALIBRATION: ");
-    Serial.print((ax / const_16g));
+    Serial.print((ax / CONST_16G));
     Serial.print(",");
-    Serial.print((ay / const_16g));
+    Serial.print((ay / CONST_16G));
     Serial.print(",");
-    Serial.print((az / const_16g));
+    Serial.print((az / CONST_16G));
     Serial.print(",");
-    Serial.print(gx / const_2000);
+    Serial.print(gx / CONST_2000);
     Serial.print(",");
-    Serial.print(gy / const_2000);
+    Serial.print(gy / CONST_2000);
     Serial.print(",");
-    Serial.println(gz / const_2000);
+    Serial.println(gz / CONST_2000);
     x_accel += ax;
     y_accel += ay;
     z_accel += az;
@@ -155,18 +179,38 @@ inline float get_delta_time(unsigned long t_now) {
   return (t_now - get_last_time()) / 1000.0;
 }
 
-/*inline float get_last_velocity() {
-  return last_velocity;
+inline int16_t get_last_gyro_angle_x() {
+  return gyro_angle_x_l;
 }
 
-inline void set_last_velocity(float _velocity) {
-  last_velocity = _velocity;
+inline void set_last_gyro_angle_x(int16_t _gyro_angle_x) {
+  gyro_angle_x_l = _gyro_angle_x;
 }
 
-inline float get_velocity(float accel_xy, float delta_time) {
-  return  get_last_velocity() + (accel_xy * 9.81 * delta_time);
+inline int16_t get_last_gyro_angle_y() {
+  return gyro_angle_y_l;
 }
-*/
+
+inline void set_last_gyro_angle_y(int16_t _gyro_angle_y) {
+  gyro_angle_y_l = _gyro_angle_y;
+}
+
+inline int16_t get_last_angle_x() {
+  return angle_x_l;
+}
+
+inline void set_last_angle_x(int16_t _ang_x) {
+  angle_x_l = _ang_x;
+}
+
+inline int16_t get_last_angle_y() {
+  return angle_y_l;
+}
+
+inline void set_last_angle_y(int16_t _ang_y) {
+  angle_y_l = _ang_y;
+}
+
 inline float get_accel_xy(float ax_p, float ay_p) {
   return sqrt(pow(ax_p, 2) + pow(ay_p, 2));
 }
