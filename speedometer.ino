@@ -10,7 +10,7 @@ MPU6050 accelgyro;
 unsigned long last_read_time;
 int16_t ax, ay, az, gx, gy, gz;
 int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
-
+int16_t temperature;
 void setup() {
   Wire.begin();
   Serial.begin(9600);
@@ -46,8 +46,10 @@ void loop() {
   float vel_y = (ay_p * dt * const_g);
   float vel = sqrt(pow(vel_x, 2) + pow(vel_y, 2));
 
+  temperature = (accelgyro.getTemperature() + 12412)/340;
+
   //Serial.print(dt, DEC);
-  Serial.print("accel: ");
+  /*Serial.print("accel: ");
   Serial.print(ax_p);
   Serial.print(",");
   Serial.print(ay_p);
@@ -61,11 +63,13 @@ void loop() {
   Serial.println(gz_p);
   Serial.print("\tvel: ");
   Serial.print(vel, 4);
-  Serial.print("\tv_x: ");
+  Serial.print(",");
   Serial.print(vel_x, 4);
-  Serial.print("\tv_y: ");
+  Serial.print(",");
   Serial.println(vel_y, 4);
-
+*/
+Serial.print("Temp: ");
+Serial.println(temperature);
   set_last_time(t_now);
   delay(5);
 }
