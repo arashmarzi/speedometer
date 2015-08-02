@@ -1,22 +1,31 @@
 #include "MPU6050.h"
 #include "Wire.h"
 #include "I2Cdev.h"
+#include <SoftwareSerial.h>
 
 const float CONST_16G = 2048;
 const float CONST_2000 = 16.4;
 const float CONST_G = 9.81;
 const float RADIANS_TO_DEGREES = 180 / 3.14159;
 const float ALPHA = 0.96;
+
 MPU6050 accelgyro;
+
 unsigned long last_read_time;
 int16_t ax, ay, az, gx, gy, gz;
 int16_t gyro_angle_x_l, gyro_angle_y_l;
 int16_t angle_x_l, angle_y_l;
 int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 int16_t temperature;
+
+SoftwareSerial BT(10, 11);
+
 void setup() {
   Wire.begin();
   Serial.begin(9600);
+  BT.begin(9600);
+
+  BT.println("Bluetooth Connected");
 
   // initialize device
   Serial.println("Initializing I2C devices...");
@@ -79,14 +88,42 @@ void loop() {
   Serial.print(vel_x, 4);
   Serial.print(",");
   Serial.println(vel_y, 4);
-  */
-  Serial.print("angle_x: ");
+
+  Serial.print("pitch: ");
   Serial.print(angle_x);
-  Serial.print("   angle_y: ");
+  Serial.print("   roll: ");
   Serial.print(angle_y);
 
   Serial.print("   temp: ");
   Serial.println(temperature);
+  */
+
+  /*BT.print(dt, DEC);
+  BT.print("  accel: ");
+  BT.print(ax_p);
+  BT.print(",");
+  BT.print(ay_p);
+  BT.print(",");
+  BT.print(az_p);
+  BT.print("  gyro: ");
+  BT.print(gx_p);
+  BT.print(",");
+  BT.print(gy_p);
+  BT.print(",");
+  BT.println(gz_p);*/
+  BT.print("  vel: ");
+  BT.print(vel, 4);
+  /*BT.print(",");
+  BT.print(vel_x, 4);
+  BT.print(",");
+  BT.print(vel_y, 4);*/
+  BT.print("  pitch: ");
+  BT.print(angle_x);
+  BT.print("  roll: ");
+  BT.print(angle_y);
+  BT.print("  temp: ");
+  BT.println(temperature);
+
   set_last_time(t_now);
 
   set_last_gyro_angle_x(gyro_angle_x);
@@ -95,7 +132,7 @@ void loop() {
   set_last_angle_x(angle_x);
   set_last_angle_y(angle_y);
 
-  delay(5);
+  delay(1000);
 }
 
 void calibrate_sensors() {
@@ -107,7 +144,8 @@ void calibrate_sensors() {
   float                 y_gyro = 0;
   float                 z_gyro = 0;
 
-  Serial.println("Starting Calibration");
+  //Serial.println("Starting Calibration");
+  BT.println("Starting Calibration");
 
   // Discard the first set of values read from the IMU
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -115,7 +153,7 @@ void calibrate_sensors() {
   // Read and average the raw values from the IMU
   for (int i = 0; i < num_readings; i++) {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    Serial.print(i);
+ /*   Serial.print(i);
     Serial.print("-CALIBRATION: ");
     Serial.print((ax / CONST_16G));
     Serial.print(",");
@@ -128,6 +166,21 @@ void calibrate_sensors() {
     Serial.print(gy / CONST_2000);
     Serial.print(",");
     Serial.println(gz / CONST_2000);
+*/
+    BT.print(i);
+    BT.print("-CALIBRATION: ");
+    BT.print((ax / CONST_16G));
+    BT.print(",");
+    BT.print((ay / CONST_16G));
+    BT.print(",");
+    BT.print((az / CONST_16G));
+    BT.print(",");
+    BT.print(gx / CONST_2000);
+    BT.print(",");
+    BT.print(gy / CONST_2000);
+    BT.print(",");
+    BT.println(gz / CONST_2000);
+    
     x_accel += ax;
     y_accel += ay;
     z_accel += az;
@@ -151,7 +204,7 @@ void calibrate_sensors() {
   gy_offset = y_gyro;
   gz_offset = z_gyro;
 
-  Serial.print("Offsets: ");
+  /*Serial.print("Offsets: ");
   Serial.print(ax_offset);
   Serial.print(", ");
   Serial.print(ay_offset);
@@ -164,7 +217,23 @@ void calibrate_sensors() {
   Serial.print(", ");
   Serial.println(gz_offset);
 
-  Serial.println("Finishing Calibration");
+  Serial.println("Finishing Calibration");*/
+
+  BT.print("Offsets: ");
+  BT.print(ax_offset);
+  BT.print(", ");
+  BT.print(ay_offset);
+  BT.print(", ");
+  BT.print(az_offset);
+  BT.print(", ");
+  BT.print(gx_offset);
+  BT.print(", ");
+  BT.print(gy_offset);
+  BT.print(", ");
+  BT.println(gz_offset);
+
+  //Serial.println("Finishing Calibration");
+  BT.println("Finishing Calibration");
 }
 
 inline unsigned long get_last_time() {
