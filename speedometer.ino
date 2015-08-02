@@ -8,6 +8,7 @@ const float CONST_2000 = 16.4;
 const float CONST_G = 9.81;
 const float RADIANS_TO_DEGREES = 180 / 3.14159;
 const float ALPHA = 0.96;
+const float KMPH = 3.6;
 
 MPU6050 accelgyro;
 
@@ -65,7 +66,7 @@ void loop() {
 
   float vel_x = (ax_p * dt * CONST_G);
   float vel_y = (ay_p * dt * CONST_G);
-  float vel = sqrt(pow(vel_x, 2) + pow(vel_y, 2));
+  float vel = sqrt(pow(vel_x, 2) + pow(vel_y, 2)) * KMPH;
 
   temperature = (accelgyro.getTemperature() + 12412) / 340;
 
@@ -113,16 +114,20 @@ void loop() {
   BT.println(gz_p);*/
   BT.print("  vel: ");
   BT.print(vel, 4);
+  BT.print("km/hr");
   /*BT.print(",");
   BT.print(vel_x, 4);
   BT.print(",");
   BT.print(vel_y, 4);*/
   BT.print("  pitch: ");
   BT.print(angle_x);
+  BT.print("deg");
   BT.print("  roll: ");
   BT.print(angle_y);
+  BT.print("deg");
   BT.print("  temp: ");
   BT.println(temperature);
+  BT.print(" C");
 
   set_last_time(t_now);
 
